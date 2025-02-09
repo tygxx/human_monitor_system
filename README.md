@@ -11,8 +11,23 @@
 conda create -n human_monitor_system python=3.10
 conda activate human_monitor_system
 
+# pip去安装这两个依赖时，很容易因环境问题失败，所以使用conda安装
+conda install -c conda-forge dlib
+conda install -c conda-forge face_recognition
+
 # 安装依赖
-pip install -r requirements.txt
+# pip install -r requirements.txt
+# 安装基础依赖
+pip install opencv-python numpy mediapipe
+
+# 安装 PyTorch (根据您的系统选择 CPU 或 CUDA 版本)
+pip install torch torchvision
+
+# 安装其他工具库
+pip install python-dateutil PyYAML mysql-connector-python
+
+# 安装开发工具（可选）
+pip install pytest black pylint
 ```
 
 ## 功能模块
