@@ -3,7 +3,7 @@ import numpy as np
 from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 from app.utils.logger import logger
-from app.utils.db_connection import with_db_connection
+from app.utils.db_utils import with_db_connection
 from .camera_manager import CameraManager, CameraInfo
 from .patrol_point_manager import PatrolPointManager, PatrolPoint
 from .guard_manager import GuardManager, GuardInfo
@@ -32,23 +32,27 @@ class PatrolDetector:
             faces = self.guard_manager.face_recognizer.detect_faces(frame)
             if not faces:
                 return []
-
             results = []
             for face_img, face_encoding in faces:
+                # 获取人脸在原图中的位置
+                height, width = face_img.shape[:2]
+                logger.info(f"识别到人脸，人脸位置: {height}, {width}")
                 # 识别保安身份
                 guard = self._identify_guard(face_encoding)
                 if not guard:
                     continue
-
-                # 获取人脸中心点坐标
+                
                 face_center = self._get_face_center(face_img)
                 
                 # 检查是否在巡逻点位
                 for point in self.patrol_points:
+                    logger.info(f"检查点位: {point.name}，位置: {face_center}")
                     if self._is_in_patrol_point(face_center, point):
                         # 记录巡逻记录
-                        self.point_manager.add_patrol_record(guard.guard_id, point.point_id)
-                        results.append((point, guard))
+                        success = self.point_manager.add_patrol_record(guard.guard_id, point.point_id)
+                        if success:
+                            logger.info(f"添加巡逻记录 - 保安: {guard.name}, 点位: {point.name}")
+                            results.append((point, guard))
 
             return results
             

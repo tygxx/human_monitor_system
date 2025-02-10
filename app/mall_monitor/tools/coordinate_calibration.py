@@ -9,6 +9,7 @@ from app.utils.logger import logger
 from app.mall_monitor.security_patrol.camera_manager import CameraManager
 from app.mall_monitor.security_patrol.patrol_point_manager import PatrolPointManager
 from app.config.settings import BASE_DIR
+from app.utils.cv_utils import put_chinese_text
 
 class CoordinateCalibrator:
     def __init__(self, camera_id: str, video_source: str):
@@ -108,21 +109,11 @@ class CoordinateCalibrator:
 
             # 显示操作提示和信息
             if self.calibrating:
-                display = self._cv2_add_chinese_text(
-                    display, 
-                    f"正在添加点位: {self.current_point_name}", 
-                    (10, 30), 
-                    20, 
-                    (0, 255, 0)
-                )
+                text = f"Adding point: {self.current_point_name}"
+                display = put_chinese_text(display, text, (10, 30), (0, 255, 0))
             else:
-                display = self._cv2_add_chinese_text(
-                    display,
-                    "按 'n' 添加新点位, 'q' 退出",
-                    (10, 30),
-                    20,
-                    (0, 255, 0)
-                )
+                text = "Press 'n' to add new point, 'q' to quit"
+                display = put_chinese_text(display, text, (10, 30), (0, 255, 0))
 
             # 显示摄像头信息
             display = self._cv2_add_chinese_text(
