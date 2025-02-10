@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from app.utils.logger import logger
 from app.utils.db_utils import with_db_connection
 from datetime import datetime
+from app.config.settings import PATROL_POINT_CONFIG
 
 @dataclass
 class PatrolPoint:
@@ -94,9 +95,17 @@ class PatrolPointManager:
 
     @with_db_connection
     def add_point(self, camera_id: str, name: str, coord_x: int, coord_y: int, 
-                 description: str = "", radius: int = 50, conn=None) -> Optional[int]:
+                 description: str = "", radius: int = None, conn=None) -> Optional[int]:
         """添加巡逻点位"""
         try:
+            # 使用配置文件中的默认半径
+            if radius is None:
+                radius = PATROL_POINT_CONFIG['default_radius']
+            
+            # 确保半径在有效范围内
+            radius = max(PATROL_POINT_CONFIG['min_radius'], 
+                        min(radius, PATROL_POINT_CONFIG['max_radius']))
+            
             cursor = conn.cursor()
             sql = """
                 INSERT INTO patrol_points (camera_id, name, coord_x, coord_y, radius, description)
@@ -118,7 +127,7 @@ class PatrolPointManager:
             )
             self.points[point_id] = point
             
-            logger.info(f"成功添加巡逻点位: {name} (ID: {point_id})")
+            logger.info(f"成功添加巡逻点位: {name} (ID: {point_id}, 半径: {radius})")
             return point_id
             
         except Exception as e:
