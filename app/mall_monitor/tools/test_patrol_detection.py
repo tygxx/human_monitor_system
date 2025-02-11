@@ -222,18 +222,35 @@ class PatrolDetectionTester:
         # 调整图像尺寸
         display = self._resize_frame(frame.copy())
         
-        # 绘制巡逻点位（需要调整坐标）
+        # 绘制网格线和坐标
+        grid_spacing = 100  # 网格间距（显示坐标系统）
+        
+        # 绘制垂直线和X轴坐标
+        for x in range(0, self.display_width, grid_spacing):
+            cv2.line(display, (x, 0), (x, self.display_height), (128, 128, 128), 1)
+            # 转换为原始坐标系统的值
+            orig_x = int(x * (self.original_size[0] / self.display_width))
+            cv2.putText(display, f'x:{orig_x}', (x + 5, 15), 
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1)
+
+        # 绘制水平线和Y轴坐标
+        for y in range(0, self.display_height, grid_spacing):
+            cv2.line(display, (0, y), (self.display_width, y), (128, 128, 128), 1)
+            # 转换为原始坐标系统的值
+            orig_y = int(y * (self.original_size[1] / self.display_height))
+            cv2.putText(display, f'y:{orig_y}', (5, y + 15), 
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1)
+        
+        # 绘制巡逻点位
         for point in self.detector.patrol_points:
-            # 计算显示坐标
             display_x = int(point.coord_x * (self.display_width / self.original_size[0]))
             display_y = int(point.coord_y * (self.display_height / self.original_size[1]))
             display_radius = int(point.radius * (self.display_width / self.original_size[0]))
             
-            # 绘制圆圈和点位名称
             cv2.circle(display, (display_x, display_y), display_radius, (0, 255, 0), 2)
             display = put_chinese_text(
                 display, 
-                point.name,
+                f"{point.name}({point.coord_x},{point.coord_y})",  # 添加原始坐标信息
                 (display_x - 20, display_y - 10),
                 (0, 255, 0),
                 'small'

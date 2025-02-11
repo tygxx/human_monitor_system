@@ -79,12 +79,18 @@ class PatrolPointManager:
 
     @with_db_connection
     def add_patrol_record(self, guard_id: str, point_id: int, conn=None) -> bool:
-        """添加巡逻记录"""
+        """添加巡逻记录
+        Args:
+            guard_id: 保安ID
+            point_id: 巡逻点位ID
+        Returns:
+            bool: 是否添加成功
+        """
         try:
             cursor = conn.cursor()
             sql = """
-                INSERT INTO patrol_records (guard_id, point_id)
-                VALUES (%s, %s)
+                INSERT INTO patrol_records (guard_id, point_id, arrival_time)
+                VALUES (%s, %s, NOW())
             """
             cursor.execute(sql, (guard_id, point_id))
             conn.commit()

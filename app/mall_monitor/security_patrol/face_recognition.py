@@ -72,6 +72,12 @@ class FaceRecognizer:
                      face_embedding2: np.ndarray) -> float:
         """比较两个人脸特征向量的相似度"""
         try:
+            # 确保输入是一维数组
+            if face_embedding1.ndim > 1:
+                face_embedding1 = face_embedding1.flatten()
+            if face_embedding2.ndim > 1:
+                face_embedding2 = face_embedding2.flatten()
+            
             # 使用face_recognition的内置函数计算距离
             distance = face_recognition.face_distance([face_embedding1], face_embedding2)[0]
             # 转换为相似度分数（距离越小，相似度越高）
