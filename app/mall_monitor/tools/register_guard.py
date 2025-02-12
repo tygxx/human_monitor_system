@@ -7,10 +7,11 @@ from app.utils.logger import logger
 
 """
 # 从摄像头录入
-python app/mall_monitor/tools/register_guard.py --mode camera
+python -m app.mall_monitor.tools.register_guard --mode camera
 
 # 从照片录入
-python app/mall_monitor/tools/register_guard.py --mode image --image-path /path/to/image.jpg
+python -m app.mall_monitor.tools.register_guard --mode image --image-path /path/to/photo.jpg
+
 """
 
 def main():

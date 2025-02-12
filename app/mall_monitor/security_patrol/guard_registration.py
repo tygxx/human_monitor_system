@@ -8,7 +8,6 @@ from datetime import datetime
 from app.utils.logger import logger
 from app.utils.exceptions import FaceDetectionError
 from app.utils.db_utils import execute_update
-from app.config.settings import FACE_RECOGNITION_CONFIG
 
 class GuardRegistration:
     def __init__(self):

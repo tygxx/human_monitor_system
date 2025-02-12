@@ -38,8 +38,6 @@ CREATE TABLE patrol_records (
     FOREIGN KEY (guard_id) REFERENCES guards(guard_id)
 ) COMMENT='巡逻记录表';
 
--- 添加索引
-ALTER TABLE patrol_records ADD INDEX idx_guard_point (guard_id, point_id);
 
 -- 插入测试数据：摄像头
 INSERT INTO cameras (camera_id, name, location, resolution_width, resolution_height, fps) VALUES

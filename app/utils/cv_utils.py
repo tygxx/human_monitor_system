@@ -86,6 +86,75 @@ class TextRenderer:
             return cv2.putText(img, text, position, cv2.FONT_HERSHEY_SIMPLEX,
                              0.5 if font_size == 'small' else 0.7, color, 1)
 
-def put_chinese_text(img, text, position, color=(0, 255, 0), font_size='normal'):
-    """便捷方法用于绘制中文文字"""
-    return TextRenderer.get_instance().put_text(img, text, position, color, font_size) 
+def put_chinese_text(img: np.ndarray, text: str, position: tuple, 
+                    font_size: int = 24, color: tuple = (0, 255, 0)) -> np.ndarray:
+    """在OpenCV图像上绘制中文文本
+    
+    Args:
+        img: OpenCV图像(numpy.ndarray)
+        text: 要绘制的文本
+        position: 文本位置，格式为(x, y)
+        font_size: 字体大小，默认24
+        color: 字体颜色，格式为(B,G,R)，默认绿色
+        
+    Returns:
+        添加文本后的图像
+    """
+    # 字体文件路径
+    font_path = Path(BASE_DIR) / "resources" / "fonts" / "wqy-microhei.ttc"
+    
+    if not font_path.exists():
+        raise FileNotFoundError(f"找不到字体文件: {font_path}")
+    
+    # OpenCV图像转PIL图像
+    pil_img = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+    
+    # 创建绘图对象
+    draw = ImageDraw.Draw(pil_img)
+    
+    # 加载字体
+    font = ImageFont.truetype(str(font_path), font_size)
+    
+    # 绘制文本
+    draw.text(position, text, font=font, fill=color[::-1])  # PIL颜色顺序是RGB
+    
+    # PIL图像转回OpenCV图像
+    cv2_img = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
+    
+    return cv2_img
+
+def draw_face_box(img: np.ndarray, face_location: tuple, text: str, 
+                  box_color: tuple = (0, 255, 0), box_thickness: int = 2,
+                  font_size: int = 24) -> np.ndarray:
+    """在图像上绘制人脸框和文本
+    
+    Args:
+        img: OpenCV图像
+        face_location: 人脸位置(top, right, bottom, left)
+        text: 要显示的文本
+        box_color: 框的颜色(B,G,R)
+        box_thickness: 框的粗细
+        font_size: 字体大小
+        
+    Returns:
+        处理后的图像
+    """
+    top, right, bottom, left = face_location
+    
+    # 绘制人脸框
+    cv2.rectangle(img, (left, top), (right, bottom), box_color, box_thickness)
+    
+    # 计算文本位置（框的上方）
+    text_x = left
+    text_y = max(0, top - font_size - 5)  # 确保不会超出图像上边界
+    
+    # 绘制中文文本
+    img = put_chinese_text(
+        img, 
+        text, 
+        (text_x, text_y),
+        font_size=font_size,
+        color=box_color
+    )
+    
+    return img 
