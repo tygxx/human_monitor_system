@@ -2,12 +2,25 @@ import cv2
 import numpy as np
 from datetime import datetime, timedelta
 import face_recognition
+import os
+import sys
 from typing import Optional, Tuple, List, Dict
 
 from app.utils.logger import logger
 from app.utils.db_utils import execute_query, execute_update
 from app.utils.cv_utils import draw_face_box
 from app.config.settings import FACE_RECOGNITION_SETTINGS as FR_SETTINGS
+
+def has_display() -> bool:
+    """检查是否有GUI显示环境"""
+    try:
+        if sys.platform.startswith('linux'):
+            # 检查是否有DISPLAY环境变量
+            return bool(os.environ.get('DISPLAY'))
+        # Windows和MacOS默认认为有显示环境
+        return True
+    except Exception:
+        return False
 
 class FaceMonitor:
     def __init__(self):
@@ -207,4 +220,145 @@ class FaceMonitor:
         finally:
             cap.release()
             cv2.destroyAllWindows()
-            logger.info("监控已停止，资源已释放") 
+            logger.info("监控已停止，资源已释放")
+
+    def start_video_file_monitor(self, camera_id: str, video_path: str):
+        """从视频文件读取并进行人脸识别
+
+        Args:
+            camera_id: 摄像头ID
+            video_path: 视频文件路径
+        """
+        try:
+            video_path = str(video_path)  # 确保是字符串路径
+            logger.info(f"正在打开视频文件: {video_path}")
+            
+            cap = cv2.VideoCapture(video_path)
+            if not cap.isOpened():
+                raise Exception(f"无法打开视频文件: {video_path}")
+            
+            # 获取视频信息
+            total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+            fps = int(cap.get(cv2.CAP_PROP_FPS))
+            if fps == 0:  # 防止除以0错误
+                fps = 30
+            duration = total_frames / fps
+            
+            logger.info(f"视频信息 - 总帧数: {total_frames}, FPS: {fps}, "
+                       f"时长: {duration:.1f}秒")
+            
+            # 检查是否有GUI环境
+            has_gui = has_display()
+            if has_gui:
+                logger.info("检测到GUI环境，将显示处理画面")
+                cv2.namedWindow('Face Monitor')
+                frame_delay = int(1000 / fps)  # 每帧延迟的毫秒数
+            else:
+                logger.info("未检测到GUI环境，将以最快速度处理视频")
+                frame_delay = 1
+            
+            frame_count = 0
+            last_process_time = datetime.now()
+            is_paused = False
+            last_frame = None  # 保存最后一帧用于暂停显示
+            
+            while True:
+                if not is_paused:
+                    ret, frame = cap.read()
+                    if not ret:
+                        logger.info("视频读取完成")
+                        break
+                    
+                    frame_count += 1
+                    last_frame = frame.copy()  # 保存当前帧
+                    
+                    # 显示进度
+                    progress = (frame_count / total_frames) * 100
+                    if frame_count % fps == 0:  # 每秒更新一次日志
+                        logger.info(f"处理进度: {progress:.1f}% "
+                                  f"({frame_count}/{total_frames})")
+                    
+                    # 控制处理帧的频率
+                    now = datetime.now()
+                    if (now - last_process_time).total_seconds() < FR_SETTINGS['frame_process_interval']:
+                        continue
+                    last_process_time = now
+                    
+                    # 识别人脸
+                    matched_faces, unmatched_faces = self._recognize_face(frame)
+                    
+                    # 处理未匹配的人脸
+                    for face_location in unmatched_faces:
+                        if has_gui:
+                            frame = draw_face_box(
+                                frame,
+                                face_location,
+                                "",  # 不显示文字
+                                box_color=FR_SETTINGS['unknown_face_box_color'],
+                                box_thickness=FR_SETTINGS['face_box_thickness']
+                            )
+                    
+                    # 处理匹配到的人脸
+                    for guard_id, face_location, guard_name in matched_faces:
+                        if has_gui:
+                            frame = draw_face_box(
+                                frame,
+                                face_location,
+                                f"{guard_name} ({guard_id})",
+                                box_color=FR_SETTINGS['face_box_color'],
+                                box_thickness=FR_SETTINGS['face_box_thickness'],
+                                font_size=int(FR_SETTINGS['display_font_scale'] * 48)
+                            )
+                        
+                        # 记录巡逻记录
+                        self._record_patrol(guard_id)
+                    
+                    if has_gui:
+                        # 添加进度条
+                        progress_bar_width = frame.shape[1] - 40
+                        progress_x = int(progress_bar_width * (frame_count / total_frames))
+                        cv2.rectangle(frame, (20, 20), (20 + progress_bar_width, 30), 
+                                    (100, 100, 100), -1)
+                        cv2.rectangle(frame, (20, 20), (20 + progress_x, 30), 
+                                    (0, 255, 0), -1)
+                        
+                        # 显示时间信息
+                        current_time = frame_count / fps
+                        time_text = f"{int(current_time/60):02d}:{int(current_time%60):02d} / "
+                        time_text += f"{int(duration/60):02d}:{int(duration%60):02d}"
+                        cv2.putText(frame, time_text, (20, 50), cv2.FONT_HERSHEY_SIMPLEX, 
+                                   0.6, (255, 255, 255), 2)
+                
+                if has_gui:
+                    # 显示画面
+                    cv2.imshow('Face Monitor', frame if not is_paused else last_frame)
+                    
+                    # 处理键盘事件
+                    key = cv2.waitKey(0 if is_paused else frame_delay) & 0xFF
+                    
+                    if key == ord('q'):
+                        logger.info("用户手动停止处理")
+                        break
+                    elif key == ord(' '):
+                        is_paused = not is_paused
+                        logger.info("视频已{}".format("暂停" if is_paused else "继续"))
+                    elif key == ord(','):  # 后退5秒
+                        current_frame = cap.get(cv2.CAP_PROP_POS_FRAMES)
+                        target_frame = max(0, current_frame - fps * 5)
+                        cap.set(cv2.CAP_PROP_POS_FRAMES, target_frame)
+                        frame_count = int(target_frame)
+                    elif key == ord('.'):  # 前进5秒
+                        current_frame = cap.get(cv2.CAP_PROP_POS_FRAMES)
+                        target_frame = min(total_frames - 1, current_frame + fps * 5)
+                        cap.set(cv2.CAP_PROP_POS_FRAMES, target_frame)
+                        frame_count = int(target_frame)
+                    
+        except Exception as e:
+            logger.error(f"视频处理发生错误: {str(e)}")
+            raise
+            
+        finally:
+            cap.release()
+            if has_gui:
+                cv2.destroyAllWindows()
+            logger.info("视频处理完成，资源已释放") 
