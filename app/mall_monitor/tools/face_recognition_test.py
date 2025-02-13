@@ -82,12 +82,30 @@ def main():
                 print(f"错误：找不到视频文件 {video_path}")
                 sys.exit(1)
                 
-            print("\n开始处理视频...")
-            print("按 'q' 键退出，空格键暂停")
+            # 选择是否显示界面
+            print("\n是否需要显示处理界面？")
+            print("1. 是 - 显示处理画面，可暂停/快进/后退")
+            print("2. 否 - 以最快速度处理，仅显示日志")
+            
+            show_gui = input("\n请选择 (1-2): ").strip()
+            if show_gui not in ["1", "2"]:
+                print("错误：无效的选择")
+                sys.exit(1)
+                
+            if show_gui == "1":
+                print("\n开始处理视频...")
+                print("控制键说明：")
+                print("- 空格键：暂停/继续")
+                print("- 左方向键：后退5秒")
+                print("- 右方向键：前进5秒")
+                print("- Q键：退出")
+            else:
+                print("\n开始处理视频，将以最快速度处理...")
             
             monitor.start_video_file_monitor(
                 camera_id=camera_info['camera_id'],
-                video_path=str(video_path)
+                video_path=str(video_path),
+                force_no_gui=(show_gui == "2")  # 如果选择2，则强制不显示GUI
             )
             
         else:
