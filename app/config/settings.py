@@ -37,7 +37,7 @@ DB_CONFIG = {
 
 # Face Recognition Settings
 FACE_RECOGNITION_SETTINGS = {
-    'face_match_tolerance': 0.6,  # 人脸匹配阈值，越小越严格
+    'face_match_tolerance': 0.8,  # 人脸匹配阈值，越小越严格
     'frame_process_interval': 1,   # 处理帧的间隔（秒）
     'recognition_cooldown': 300,   # 同一保安重新识别的冷却时间（秒）
     'min_face_size': 20,          # 最小人脸尺寸（像素）
